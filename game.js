@@ -4,6 +4,8 @@ import { GameRenderer } from './game.renderer.js'
 import { GameCamera } from './game.camera.js'
 import { GamePlayer } from './game.player.js'
 import { GameRoad } from './game.road.js'
+import { GameEnemy } from './game.enemy.js'
+import { PlayerOutsideEvent } from './events/player.outside.event.js'
 
 export class Game {
   isAI = false
@@ -15,6 +17,8 @@ export class Game {
   camera = new GameCamera()
   player = new GamePlayer({})
   road = new GameRoad({})
+  enemies = [this.createGameEnemy()]
+  timeout = 1e3
 
   constructor() {
     // player
@@ -29,6 +33,17 @@ export class Game {
     // road
     this.road.position.set(0, 0, 0)
     this.scene.add(this.road)
+    // 
+    this.addGameEnemy()
+    // 
+    this.setEvents()
+  }
+
+  setEvents() {
+    window.addEventListener(PlayerOutsideEvent.NAME, ({ detail }) => {
+      alert('Game Over! You are ' + detail.side)
+      this.reset()
+    })
   }
 
   setIsAI(isAI) {
@@ -41,6 +56,10 @@ export class Game {
       switch (event.code) {
         case 'ArrowLeft': this.player.position.x += 1; break;
         case 'ArrowRight': this.player.position.x -= 1; break;
+      }
+
+      if (Math.abs(this.player.position.x) > 10) {
+        window.dispatchEvent(new PlayerOutsideEvent({ side: ({ 'ArrowLeft': 'left', 'ArrowRight': 'right' })[event.code] }))
       }
     })
   }
@@ -56,8 +75,27 @@ export class Game {
     this.isPlaying = false
   }
 
+  addGameEnemy() {
+    this.enemies.push(this.createGameEnemy())
+    setTimeout(() => this.addGameEnemy(), this.timeout)
+  }
+
+  createGameEnemy() {
+    return new GameEnemy()
+  }
+
+  moveEnemies() {
+    this.enemies.map((e) => {
+      e.move()
+    })
+  }
+
   animate() {
-    this.road.position.x += 1e-2
+    this.moveEnemies()
     this.renderer.render(this.scene, this.camera)
+  }
+
+  reset() {
+    // fixme
   }
 }
