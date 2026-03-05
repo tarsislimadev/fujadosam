@@ -6,6 +6,8 @@ import { GamePlayer } from './game.player.js'
 import { GameRoad } from './game.road.js'
 import { GameEnemy } from './game.enemy.js'
 import { PlayerOutsideEvent } from './events/player.outside.event.js'
+import { EnemyCollisionEvent } from './events/enemy.collision.event.js'
+import { Clock } from './clock.js'
 
 export class Game {
   isAI = false
@@ -19,6 +21,7 @@ export class Game {
   road = new GameRoad({})
   enemies = [this.createGameEnemy()]
   timeout = 1e3
+  clock = new Clock()
 
   constructor() {
     // player
@@ -37,6 +40,8 @@ export class Game {
     this.addGameEnemy()
     // 
     this.setEvents()
+    //
+    this.clock.start()
   }
 
   setEvents() {
@@ -44,6 +49,13 @@ export class Game {
       alert('Game Over! You are ' + detail.side)
       this.reset()
     })
+
+    window.addEventListener(EnemyCollisionEvent.NAME, () => {
+      alert('Game Over! It\'s a collision...')
+      this.reset()
+    })
+
+    this.clock.addEventListener('tick', () => this.moveEnemies())
   }
 
   setIsAI(isAI) {
@@ -81,21 +93,29 @@ export class Game {
   }
 
   createGameEnemy() {
-    return new GameEnemy()
+    const enemy = new GameEnemy()
+    this.scene.add(enemy)
+    return enemy
   }
 
   moveEnemies() {
-    this.enemies.map((e) => {
-      e.move()
-    })
+    this.enemies.map((e) => e.move())
+    this.checkEnemiesCollisions()
+  }
+
+  checkEnemiesCollisions({ x, z } = this.player.position) {
+    const collisions = this.enemies
+      .filter((e) => e.position.x == x)
+      .filter((e) => e.position.z == z)
+
+    if (collisions.length > 0) window.dispatchEvent(new EnemyCollisionEvent())
   }
 
   animate() {
-    this.moveEnemies()
     this.renderer.render(this.scene, this.camera)
   }
 
   reset() {
-    // fixme
+    this.player.position.set(0, 0, 0)
   }
 }
